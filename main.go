@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+
 var baseDir = ""
 
 //var  baseDir = `G:\go\26604071`
