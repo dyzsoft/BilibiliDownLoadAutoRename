@@ -5,9 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 var baseDir = ""
+
+//var  baseDir = `G:\go\26604071`
+
 var jsonConfigFile = "entry.json"
 
 type PageData struct {
@@ -26,13 +31,13 @@ type Entry struct {
 */
 
 func main() {
-	//  获取baseDir，并且切换到对应目录
-	//
-	if len(os.Args) >= 2 {
-		baseDir = os.Args[1] + "/"
-	} else {
-		baseDir, _ = os.Getwd()
-		baseDir = baseDir + "/"
+	// 获取baseDir，并且切换到对应目录
+	if baseDir == "" {
+		if len(os.Args) >= 2 {
+			baseDir = os.Args[1]
+		} else {
+			baseDir, _ = os.Getwd()
+		}
 	}
 
 	err := os.Chdir(baseDir)
@@ -53,16 +58,20 @@ func main() {
 
 	for i := 0; i < len(dirNames); i++ {
 
-		if realname, err := GetRealDirName(baseDir + dirNames[i]); err == nil {
+		curdirname := filepath.Join(baseDir , dirNames[i])
 
-			if err := ChangeDirName(baseDir+dirNames[i], baseDir+realname); err != nil {
-				fmt.Printf("重命名文件夹: %s 失败！\n", baseDir+dirNames[i])
+		if realname, err := GetRealDirName(curdirname); err == nil {
+
+			fmt.Println(filepath.Join(baseDir,realname))
+
+			if err := ChangeDirName(curdirname, filepath.Join(baseDir,realname)); err != nil {
+				fmt.Printf("重命名文件夹: %s 失败！\n",curdirname)
 				fmt.Println(err)
 				fmt.Println()
 			}
 
 		} else {
-			fmt.Printf("获取真实文件夹 %s 的名称失败！\n", baseDir+dirNames[i])
+			fmt.Printf("获取真实文件夹 %s 的名称失败！\n", curdirname)
 			fmt.Println(err)
 			fmt.Println()
 			continue
@@ -88,7 +97,7 @@ func GetAllDirName() (names []string, err error) {
 func GetRealDirName(name string) (realname string, err error) {
 
 	var fileContent []byte
-	fileContent, err = ioutil.ReadFile(name + "/" + jsonConfigFile)
+	fileContent, err = ioutil.ReadFile(filepath.Join(name,jsonConfigFile))
 
 	if err == nil {
 		var entry Entry
@@ -100,6 +109,39 @@ func GetRealDirName(name string) (realname string, err error) {
 
 	return realname, err
 }
+
+
 func ChangeDirName(old string, new string) error {
+
+	ChangeExtBlvToMp4(old)  // 重命名 .blv  to .mp4
+
 	return os.Rename(old, new)
+}
+
+func ChangeExtBlvToMp4(dirname string) error{
+	fileInfos, err := ioutil.ReadDir(dirname)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(fileInfos); i++ {
+		fileinfo := fileInfos[i]
+		if  fileinfo.IsDir() {
+			realdir := filepath.Join(dirname,fileinfo.Name())
+			finfos, err := ioutil.ReadDir(realdir)
+			if err != nil {
+				continue
+			}
+			for i:=0 ;i<len(finfos);i++{
+				filename := finfos[i].Name()
+				//fmt.Println(filepath.Ext(filename))
+				if filepath.Ext(filename) == ".blv" {
+					err := os.Rename(filepath.Join(realdir,filename), filepath.Join(realdir,strings.Replace(filename, "blv", "mp4", -1)))
+					if err != nil {
+						fmt.Println(err)
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
